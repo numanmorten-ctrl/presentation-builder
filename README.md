@@ -1,48 +1,59 @@
-# presentation-builder
+# Executive Deck Studio
 
-A local Streamlit web app for generating professional, executive-style PowerPoint presentations from structured input.
+A local Streamlit web app for generating executive-style PowerPoint presentations. The app now uses an **AI-style presentation workflow** while remaining fully local and rule based; OpenAI API integration is intentionally not included yet.
 
-The first supported use case is a **Role development / salary conversation** deck for **Morten Numan**, built on the uploaded Knauf PowerPoint template at `templates/Knauf.pptx`.
+The first supported use case is a **Morten Numan salary/development conversation** deck, built on the uploaded Knauf PowerPoint template at `templates/Knauf.pptx`.
 
 ## What the app does
 
 The Streamlit app lets a user:
 
-- choose a presentation type
-- enter a title
-- enter a target audience
-- enter a key message
-- click **Generate PowerPoint**
-- download the generated `.pptx`
+1. Describe the presentation in one large text area.
+2. Choose a deck style:
+   - Executive / McKinsey-style
+   - Technical
+   - Sales / customer-facing
+   - Internal management
+3. Choose the number of slides.
+4. Choose whether to include speaker notes.
+5. Click **Generate PowerPoint**.
+6. Download the generated `.pptx`.
 
 The generated file is saved to:
 
 ```text
-output/morten_salary_deck_v1.pptx
+output/morten_salary_deck_v2.pptx
 ```
 
 ## Generated deck structure
 
-The default deck includes eight slides:
+The default nine-slide deck includes:
 
-1. Cover slide
-2. Professional development timeline
-3. Role 2024 vs. role today
-4. Value creation for Knauf
-5. Interdisciplinary profile / difficult to benchmark
-6. Documented results
-7. Future role potential
-8. Conclusion / dialogue about role, title and salary
+1. Cover
+2. Executive summary
+3. Professional journey timeline
+4. Role 2024 vs. role today
+5. Value creation for Knauf
+6. Interdisciplinary profile — difficult to benchmark
+7. Documented results
+8. Future potential
+9. Conclusion / dialogue about role, title and salary
 
 ## Design approach
 
-The builder uses `python-pptx` and starts from `templates/Knauf.pptx` as the base presentation. Generated slides apply a Knauf-inspired red, white and grey visual system with:
+The builder uses `python-pptx` and starts from `templates/Knauf.pptx` as the base presentation. Generated slides apply a Knauf-inspired red, white and grey executive visual system with:
 
-- large executive headlines
-- concise slide copy
+- large headlines
+- concise slide copy with fewer words per slide
+- strong whitespace
 - cards and comparison panels
-- timelines and simple diagrams
-- strong visual hierarchy
+- timelines and arrows
+- simple consulting-style diagrams
+- a house model for the interdisciplinary profile slide:
+  - foundation = building background and practical experience
+  - core = BIM + data + systems
+  - upper levels = automation + software + AI
+  - roof = digital products and business value
 - best-effort speaker-note metadata for each slide
 
 ## Setup
@@ -62,13 +73,12 @@ streamlit run app.py
 ## Project structure
 
 ```text
-app.py                    # Streamlit user interface
+app.py                    # Streamlit Executive Deck Studio interface
 requirements.txt          # Python dependencies
-src/content_salary.py     # Default storyline and text for the first use case
-src/diagrams.py           # Timeline, Venn and arrow diagram helpers
+src/content_salary.py     # Rule-based default storyline and workflow options
+src/diagrams.py           # Timeline, house model and arrow diagram helpers
 src/layouts.py            # Reusable PowerPoint layout primitives
 src/ppt_builder.py        # Main presentation generation service
-src/theme.py              # Knauf-inspired colors, fonts and sizing
 templates/Knauf.pptx      # Uploaded base PowerPoint template
 output/                   # Generated presentations
 ```
