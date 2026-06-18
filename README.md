@@ -1,88 +1,125 @@
 # Executive Deck Studio
 
-A local Streamlit web app for generating executive-style PowerPoint presentations. The app now uses an **AI-style presentation workflow** while remaining fully local and rule based; OpenAI API integration is intentionally not included yet.
+A local Streamlit app that generates executive PowerPoint decks from a structured **Story JSON** contract. The project now follows a presentation-engine architecture instead of hardcoding slides directly in the UI.
 
-The first supported use case is a **Morten Numan salary/development conversation** deck, built on the uploaded Knauf PowerPoint template at `templates/Knauf.pptx`.
-
-## What the app does
-
-The Streamlit app lets a user:
-
-1. Describe the presentation in one large text area.
-2. Choose a deck style:
-   - Executive / McKinsey-style
-   - Technical
-   - Sales / customer-facing
-   - Internal management
-3. Choose the number of slides.
-4. Choose whether to include speaker notes.
-5. Click **Generate PowerPoint**.
-6. Download the generated `.pptx`.
-
-The generated file is saved to:
+## Architecture
 
 ```text
-output/morten_salary_deck_v2.pptx
+User input → Story JSON → Layout Engine → PowerPoint Engine → .pptx output
 ```
 
-## Generated deck structure
+Project structure:
 
-The default nine-slide deck includes:
+```text
+app.py                    # Streamlit UI only
+src/ai_engine.py          # Future AI integration facade
+src/story_builder.py      # Rule-based Story JSON generator
+src/layout_engine.py      # Slide-type renderers
+src/template_manager.py   # Knauf template loading, cleanup and safe areas
+src/ppt_engine.py         # Orchestrates rendering and saving
+src/theme_engine.py       # Knauf theme tokens
+src/content_salary.py     # Defaults and trigger words for the Morten use case
+src/schemas.py            # Story JSON types and validation
+src/utils.py              # Shared output and JSON helpers
+templates/Knauf.pptx      # Base Knauf template
+output/.gitkeep           # Output folder placeholder; generated pptx files are ignored
+assets/                   # Optional assets
+```
 
-1. Cover
-2. Executive summary
-3. Professional journey timeline
-4. Role 2024 vs. role today
-5. Value creation for Knauf
-6. Interdisciplinary profile — difficult to benchmark
-7. Documented results
-8. Future potential
-9. Conclusion / dialogue about role, title and salary
+## Story JSON concept
 
-## Design approach
+The app first converts the user description into a structured story object:
 
-The builder uses `python-pptx` and starts from `templates/Knauf.pptx` as the base presentation. Generated slides apply a Knauf-inspired red, white and grey executive visual system with:
+```json
+{
+  "meta": {
+    "title": "...",
+    "subtitle": "...",
+    "audience": "...",
+    "style": "...",
+    "language": "da",
+    "include_speaker_notes": true
+  },
+  "slides": [
+    { "type": "cover", "title": "...", "subtitle": "...", "speaker_notes": "..." }
+  ]
+}
+```
 
-- large headlines
-- concise slide copy with fewer words per slide
-- strong whitespace
-- cards and comparison panels
-- timelines and arrows
-- simple consulting-style diagrams
-- a house model for the interdisciplinary profile slide:
-  - foundation = building background and practical experience
-  - core = BIM + data + systems
-  - upper levels = automation + software + AI
-  - roof = digital products and business value
-- best-effort speaker-note metadata for each slide
+This separation makes it possible to debug narrative quality before rendering PowerPoint. `src/schemas.py` validates the required fields for each supported slide type.
 
-## Setup
+Supported slide types:
 
-Create and activate a virtual environment if desired, then install dependencies:
+- `cover`
+- `executive_summary`
+- `timeline`
+- `comparison`
+- `value_cards`
+- `house_model`
+- `case_list`
+- `hub_and_spokes`
+- `conclusion`
+
+## Current generator behavior
+
+`src/story_builder.py` is rule based today and is ready for later OpenAI integration through `src/ai_engine.py`. If the prompt contains words such as `løn`, `rolle`, `BIM`, `software`, `automation`, `AI` or `Knauf`, it generates a Danish Morten salary/development storyline. Other prompts receive a generic executive storyline.
+
+The default generated file is:
+
+```text
+output/morten_salary_deck_engine_v1.pptx
+```
+
+Generated `.pptx` files in `output/` are ignored by Git; `output/.gitkeep` keeps the directory present.
+
+## Run the app
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the local app:
+Start Streamlit:
 
 ```bash
 streamlit run app.py
 ```
 
-## Project structure
+The UI provides:
 
-```text
-app.py                    # Streamlit Executive Deck Studio interface
-requirements.txt          # Python dependencies
-src/content_salary.py     # Rule-based default storyline and workflow options
-src/diagrams.py           # Timeline, house model and arrow diagram helpers
-src/layouts.py            # Reusable PowerPoint layout primitives
-src/ppt_builder.py        # Main presentation generation service
-templates/Knauf.pptx      # Uploaded base PowerPoint template
-output/                   # Generated presentations
+- presentation description text area
+- deck style selector
+- slide count input
+- include speaker notes checkbox
+- Story JSON preview
+- PowerPoint generation and download
+
+## Add a new slide type
+
+1. Add the new `type` and required fields in `src/schemas.py`.
+2. Teach `src/story_builder.py` to emit that slide JSON.
+3. Add a renderer function in `src/layout_engine.py` with the signature `renderer(slide, slide_json, theme, safe_area)`.
+4. Register it in `RENDERERS` in `src/layout_engine.py`.
+5. If needed, update `src/template_manager.py` to map the new type to a different template layout.
+6. Run validation and deck-generation checks.
+
+## Verification
+
+Useful checks:
+
+```bash
+python -m compileall app.py src
+python - <<'PY'
+from pptx import Presentation
+from src.content_salary import DEFAULT_PROMPT
+from src.story_builder import build_story
+from src.ppt_engine import build_presentation_from_story
+
+story = build_story(DEFAULT_PROMPT, slide_count=9)
+path = build_presentation_from_story(story)
+prs = Presentation(path)
+assert len(prs.slides) == 9
+print(path)
+PY
 ```
-
-## Notes
-
-`python-pptx` does not expose a stable public speaker-notes API. The project therefore stores speaker guidance as slide metadata and hidden off-canvas text so the notes remain packaged with the generated deck without relying on fragile private PowerPoint XML internals.
