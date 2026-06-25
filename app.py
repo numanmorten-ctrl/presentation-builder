@@ -4,6 +4,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from src.apv_geometry import APV_GEOMETRY_TYPES, calculate_apv_from_geometry, calculate_exposed_perimeter_mm
 from src.content_salary import DECK_STYLES, DEFAULT_DECK_STYLE, DEFAULT_PROMPT, DEFAULT_SLIDE_COUNT
 from src.story_builder import build_story
 from src.ppt_engine import build_presentation_from_story
@@ -34,6 +35,57 @@ if "story" not in st.session_state:
     st.session_state.story = None
 if "output_path" not in st.session_state:
     st.session_state.output_path = None
+if "custom_profile_apv" not in st.session_state:
+    st.session_state.custom_profile_apv = None
+
+st.markdown("---")
+st.subheader("Andre profiler")
+st.caption("Indtast Ap/V direkte, eller beregn Ap/V ud fra en simpel profilgeometri.")
+
+with st.container(border=True):
+    apv_method = st.radio(
+        "Metode",
+        ["Indtast Ap/V direkte", "Beregn Ap/V ud fra geometri"],
+        horizontal=True,
+        key="custom_profile_apv_method",
+    )
+
+    if apv_method == "Indtast Ap/V direkte":
+        direct_apv = st.number_input(
+            "Ap/V (m⁻¹)",
+            min_value=0.0,
+            value=float(st.session_state.custom_profile_apv or 0.0),
+            step=1.0,
+            key="custom_profile_direct_apv_input",
+        )
+        st.session_state.custom_profile_apv = direct_apv if direct_apv > 0 else None
+    else:
+        st.info(
+            "Denne beregning finder kun Ap/V for den valgte geometri. "
+            "Den faktiske Fireboard-beklædning og antal beskyttede sider vælges i de næste trin."
+        )
+        geometry_labels = [geometry.label for geometry in APV_GEOMETRY_TYPES]
+        geometry_by_label = {geometry.label: geometry for geometry in APV_GEOMETRY_TYPES}
+        selected_label = st.selectbox("Geometri/eksponering", geometry_labels, key="custom_profile_geometry_type")
+        selected_geometry = geometry_by_label[selected_label]
+        st.caption(selected_geometry.description)
+
+        dim_col1, dim_col2, dim_col3 = st.columns(3)
+        with dim_col1:
+            a_mm = st.number_input("a (mm)", min_value=0.0, step=1.0, key="custom_profile_a_mm")
+        with dim_col2:
+            b_mm = st.number_input("b (mm)", min_value=0.0, step=1.0, key="custom_profile_b_mm")
+        with dim_col3:
+            steel_area_mm2 = st.number_input("A (mm²)", min_value=0.0, step=10.0, key="custom_profile_area_mm2")
+
+        if a_mm > 0 and b_mm > 0 and steel_area_mm2 > 0:
+            exposed_perimeter_mm = calculate_exposed_perimeter_mm(selected_geometry.key, a_mm, b_mm)
+            calculated_apv = calculate_apv_from_geometry(selected_geometry.key, a_mm, b_mm, steel_area_mm2)
+            st.session_state.custom_profile_apv = calculated_apv
+            st.success(f"F = {exposed_perimeter_mm:.1f} mm · Ap/V = {calculated_apv:.1f} m⁻¹")
+        else:
+            st.session_state.custom_profile_apv = None
+            st.warning("Udfyld a, b og A for at beregne Ap/V.")
 
 st.markdown("---")
 st.subheader("Story JSON preview")
